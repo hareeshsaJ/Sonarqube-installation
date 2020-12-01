@@ -1,0 +1,7 @@
+---
+- name: working on postgresql installation
+  hosts: server21
+  roles:
+    - postgresql
+    - jdk
+    - sonarqube

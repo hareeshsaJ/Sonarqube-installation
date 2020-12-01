@@ -1,0 +1,36 @@
+---
+    - name: download the file
+      get_url: url=https://download.java.net/java/GA/jdk11/13/GPL/openjdk-11.0.1_linux-x64_bin.tar.gz dest=/tmp/openjdk-11.0.1_linux-x64_bin.tar.gz force=yes
+
+
+    - name: alligning configuration
+      become: yes
+      become_user: root
+      shell: |
+        cd /tmp
+        tar zxvf openjdk-11.0.1_linux-x64_bin.tar.gz
+        mv jdk-11.0.1 /usr/local/
+        chmod -R 755 /usr/local/jdk-11.0.1
+
+    - name: export path
+      blockinfile:
+        dest: /etc/profile
+        block: |
+          export JAVA_HOME=/usr/local/jdk-11.0.1
+          export PATH=$JAVA_HOME/bin:$PATH
+
+    - name: limit the file
+      pam_limits:
+        domain: root
+        limit_item: nofile
+        value: 65535
+        limit_type: soft
+
+    - name: conf file
+      sysctl:
+        name: vm.max_map_count
+        value: 262144
+        reload: yes
+
+    - name: amazon xtras
+      command: amazon-linux-extras install java-openjdk11 -y

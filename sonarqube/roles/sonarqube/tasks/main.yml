@@ -1,0 +1,73 @@
+---
+    - name: downloading sonarqube
+      get_url: url=https://binaries.sonarsource.com/CommercialDistribution/sonarqube-developer/sonarqube-developer-7.9.1.zip dest=/tmp/sonarqube-developer-7.9.1.zip force=yes
+
+    - name: unarchive
+      unarchive:
+        src: /tmp/sonarqube-developer-7.9.1.zip
+        dest: /tmp
+        remote_src: yes
+
+    - name: moving package
+      shell: |
+        cd /tmp
+        mv -v sonarqube-7.9.1/* /opt/sonarqube
+    - name: giving permissione
+      file:
+        path: /opt/sonarqube
+        state: directory
+        mode: '0755'
+
+    - name: export path
+      blockinfile:
+        dest: /etc/profile
+        block: |
+          export SONAR_HOME=/opt/sonarqube
+
+    - name: source file
+      shell: source /etc/bashrc
+      register: output
+      args:
+        executable: /bin/bash
+
+    - debug: msg= "{{ output }}"
+
+    - name: running as sonar 
+      shell: |
+        sed -i 's/#RUN_AS_USER=/RUN_AS_USER=sonar/g' /opt/sonarqube/bin/linux-x86-64/sonar.sh
+
+    - name: adding sonar properties
+      blockinfile:
+        dest: /opt/sonarqube/conf/sonar.properties
+        block: |
+          sonar.jdbc.username=sonar
+          sonar.jdbc.password=redhat
+          sonar.jdbc.url=jdbc:postgresql://localhost/sonarqube
+          sonar.web.port=8080
+          sonar.web.context=/sonarqube
+
+    - name: adding sonar group
+      file:
+        path: /opt/sonarqube
+        owner: sonar
+        group: sonar
+        recurse: yes
+
+    - name: creating sonar service file
+      copy:
+        dest: "/etc/systemd/system/sonarqube.service"
+        content: |
+          [Unit]
+          Description=SonarQube service
+          After=syslog.target network.target
+          [Service]
+          Type=forking
+          ExecStart=/opt/sonarqube/bin/linux-x86-64/sonar.sh start
+          ExecStop=/opt/sonarqube/bin/linux-x86-64/sonar.sh stop
+          User=sonar
+          Group=sonar
+          Restart=always
+          [Install]
+          WantedBy=multi-user.target
+      notify:
+        - starting service

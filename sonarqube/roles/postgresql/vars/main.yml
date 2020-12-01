@@ -1,0 +1,6 @@
+---
+# vars file for postgresql
+user_name: 'sonar'
+user_password: 'redhat'
+db_name: 'sonarqube'
+

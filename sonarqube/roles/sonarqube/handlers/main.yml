@@ -1,0 +1,7 @@
+---
+- name: starting service
+  systemd:
+    name: sonarqube
+    state: restarted
+    enabled: yes
+   

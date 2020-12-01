@@ -1,0 +1,67 @@
+---
+    - name: installing postgresql
+      command : amazon-linux-extras enable postgresql9.6
+
+    - name: installing required package
+      yum: name="{{item}}" state=present
+      with_items:
+        - postgresql
+        - postgresql-server
+        - python-psycopg2
+        - postgresql-libs
+
+    - name: installing python module
+      pip: name=psycopg2
+
+    - name: init db
+      command: service postgresql initdb
+
+    - name: start service runlevel
+      command: service postgresql start
+
+    - name: setting password
+      shell: echo "redhat"|passwd --stdin postgres
+
+    - name: create user
+      become_user: postgres
+      postgresql_user:
+        name: "{{user_name}}"
+        password: "{{user_password}}"
+
+    - name: creating sonarqube database
+      become: yes
+      become_user: postgres
+      postgresql_db:
+        name: "{{db_name}}"
+        state: present
+
+    - name: giving priv
+      become: yes
+      become_user: postgres
+      postgresql_privs:
+        db: "{{db_name}}"
+        role: "{{user_name}}"
+        privs: ALL
+        state: present
+        objs: ALL_IN_SCHEMA
+
+#    - name: "running script module"
+#      script: ./conf.py
+
+    - name: edit pg_hba.conf
+      blockinfile:
+        path: /var/lib/pgsql/data/pg_hba.conf
+        block: |
+          local all sonar md5
+          local all all peer
+          host all all 127.0.0.1/32 md5
+          host all all ::1/128 md5
+      notify: postgrsql restart
+
+    - name: Create Sonar System User
+      shell: |
+        groupadd sonar
+        useradd -c "Sonar System User" -d /opt/sonarqube -g sonar -s /bin/bash sonar
+        echo "redhat"|passwd --stdin sonar
+        usermod -a -G sonar ec2-user  
+
